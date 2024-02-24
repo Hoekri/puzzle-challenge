@@ -49,7 +49,6 @@ class Game(object):
             
     def flip_state(self):
         """Switch to the next game state."""
-        current_state = self.state_name
         next_state = self.state.next_state
         self.state.done = False
         self.state_name = next_state

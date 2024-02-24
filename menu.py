@@ -14,23 +14,25 @@ class Menu(GameState):
     def make_buttons(self):
         self.buttons = ButtonGroup()
         style = {"fill_color": pg.Color("gray10"),
-                    "hover_fill_color": pg.Color("gray20"),
-                    "text_color": pg.Color("gray80"),
-                    "hover_text_color": pg.Color("gray90")}
+                 "hover_fill_color": pg.Color("gray20"),
+                 "text_color": pg.Color("gray80"),
+                 "hover_text_color": pg.Color("gray90")}
         continents = sorted(prepare.CONTINENTS)
         w, h = 250, 80
-        left = self.screen_rect.centerx - (w // 2)
-        top = 10
-        vert_space = 100 
+        vert_space = 100
+        left = self.screen_rect.centerx - w // 2
+        top = self.screen_rect.centery - (h + vert_space * 5) // 2
         for continent in continents:
             Button((left, top, w, h), self.buttons, text=continent, 
                       hover_text=continent, call=self.choose_map,
                       args=continent, **style)
             top += vert_space
             
-    def choose_map(self, continent):
+    def choose_map(self, continent:str):
         name = continent.replace(" ", "-")
-        img = pg.transform.smoothscale(prepare.GFX[name], (640, 480))
+        img:pg.Surface = prepare.GFX[name]
+        scalar = 850 / max(img.get_size()) 
+        img = pg.transform.smoothscale_by(img, scalar)
         self.persist["puzzle"] = Puzzle(img)
         self.next_state = "IDLE"
         self.done = True

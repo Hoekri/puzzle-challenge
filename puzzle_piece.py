@@ -5,11 +5,12 @@ def close_enough(value, target, tolerance=7):
     return target - tolerance <= value <= target + tolerance
 
 class PuzzlePiece(object):
-    def __init__(self, index, image, topleft):
+    def __init__(self, index, image, topleft, size):
         self.index = index
         self.image = image
         self.rect = self.image.get_rect(topleft=topleft)
-        self.collision_rect = pg.Rect(0,0,80, 60)
+        self.size = size
+        self.collision_rect = pg.Rect(0, 0, size[0], size[1])
         self.grabbed = False
     
     def set_pos(self, pos):
@@ -31,7 +32,7 @@ class PuzzlePiece(object):
     def is_joinable(self, other):
         for side in self.neighbors:
             if other is self.neighbors[side]:
-                r1 = pg.Rect((0,0), prepare.PIECE_RECT_SIZE)
+                r1 = pg.Rect((0,0), self.size)
                 r2 = r1.copy()
                 r1.center = self.rect.center
                 r2.center = other.rect.center
@@ -89,7 +90,7 @@ class PuzzleSection(object):
         for s_piece in self.pieces:
             for side in piece.neighbors:
                 if s_piece is piece.neighbors[side]:
-                    p1 = pg.Rect((0, 0), prepare.PIECE_RECT_SIZE)
+                    p1 = pg.Rect((0, 0), piece.size)
                     p2 = p1.copy()
                     p1.center = s_piece.rect.center
                     if side == "left":
@@ -117,7 +118,7 @@ class PuzzleSection(object):
             for piece in self.pieces:
                 for side in piece.neighbors:
                     if other_piece is piece.neighbors[side]:
-                        p1 = pg.Rect((0, 0), prepare.PIECE_RECT_SIZE)
+                        p1 = pg.Rect((0, 0), piece.size)
                         p2 = p1.copy()
                         p1.center = piece.rect.center
                         p2.center = other_piece.rect.center

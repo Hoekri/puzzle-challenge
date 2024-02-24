@@ -26,18 +26,24 @@ class Puzzle(object):
     def make_pieces(self, puzzle_image):
         self.pieces = {}
         img = puzzle_image
-        img_rect = img.get_rect()
-        for column, x in enumerate(range(0, 640, 80)):
-            for row, y in enumerate(range(0, 480, 60)):
-                rect = pg.Rect(x - 20, y - 16, 120, 92)
-                clipped= rect.clip(img_rect)
+        img_rect:pg.Rect = img.get_rect()
+        pieceW = img_rect.w // 32 * 4
+        pieceH = img_rect.h // 32 * 4
+        for column in range(0, 8):
+            x = column * pieceW
+            for row in range(0, 8):
+                y = row * pieceH
+                rect = pg.Rect(x - img_rect.h // 32, y - img_rect.h // 32,
+                               3 * img_rect.w // 16, 3 * img_rect.h // 16)
+                clipped = rect.clip(img_rect)
                 offset = clipped.x - rect.x, clipped.y - rect.y
-                surf = pg.Surface((120, 92))
+                surf = pg.Surface((3 * img_rect.w // 16, 3 * img_rect.h // 16))
                 surf.blit(img.subsurface(clipped), offset)
-                cover = prepare.GFX["piece{}-{}".format(column, row)]
+                cover:pg.Surface = prepare.GFX[f"piece{column}-{row}"]
+                cover = pg.transform.scale(cover, [3 * img_rect.w // 16, 3 * img_rect.h // 16])
                 surf.blit(cover, (0, 0))
                 surf.set_colorkey(pg.Color("black"))
-                self.pieces[(column, row)] = PuzzlePiece((column, row), surf, (x, y))
+                self.pieces[(column, row)] = PuzzlePiece((column, row), surf, (x, y), (pieceW, pieceH))
         for piece in self.pieces.values():
             piece.get_neighbors(self.pieces)
         
@@ -46,15 +52,15 @@ class Puzzle(object):
         w = screen_w // 8
         h = screen_h // 8
         rects = [pg.Rect(x, y, w, h)
-                for y in range(0, screen_h, h)
-                for x in range(0, screen_w, w)]
-        pieces = self.pieces.values()
+                for y in range(0, h*8-1, h)
+                for x in range(0, w*8-1, w)]
+        pieces = list(self.pieces.values())
         shuffle(pieces)
         for p, rect in zip(pieces, rects):
             p.rect.center = rect.center
             
     def join_pieces(self, piece1, piece2):
-        p1 = pg.Rect((0, 0), prepare.PIECE_RECT_SIZE)
+        p1 = pg.Rect((0, 0), piece1.size)
         p2 = p1.copy()
         p1.center = piece1.rect.center
         for side in piece2.neighbors:
