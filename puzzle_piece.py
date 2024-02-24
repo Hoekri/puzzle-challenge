@@ -1,5 +1,4 @@
 import pygame as pg
-import prepare
 
 def close_enough(value, target, tolerance=7):
     return target - tolerance <= value <= target + tolerance
@@ -12,6 +11,7 @@ class PuzzlePiece(object):
         self.size = size
         self.collision_rect = pg.Rect(0, 0, size[0], size[1])
         self.grabbed = False
+        self.orientation = 0
     
     def set_pos(self, pos):
         self.rect.center = pos
@@ -30,7 +30,10 @@ class PuzzlePiece(object):
             self.neighbors[sides[offset]] = neighbor
    
     def is_joinable(self, other):
+        if self.orientation != other.orientation:
+            return False
         for side in self.neighbors:
+            rotatedSide = self.getRotatedSide(side)
             if other is self.neighbors[side]:
                 r1 = pg.Rect((0,0), self.size)
                 r2 = r1.copy()
@@ -41,22 +44,37 @@ class PuzzlePiece(object):
                         "right": ((r1.right, r2.left), (r1.top, r2.top)),
                         "top": ((r1.left, r2.left), (r1.top, r2.bottom)),
                         "bottom": ((r1.left, r2.left), (r1.bottom, r2.top))}
-                if all((close_enough(*pair) for pair in pos_pairs[side])):
+                if all((close_enough(*pair) for pair in pos_pairs[rotatedSide])):
                     return True
         return False
         
     def draw(self, surface):
         surface.blit(self.image, self.rect)
-    
 
-class PuzzleSection(object):
+    def rotate(self, degrees):
+        assert degrees % 90 == 0
+        ndts = degrees // 90
+        self.image = pg.transform.rotate(self.image, degrees)
+        self.rect = self.image.get_rect()
+        if ndts % 2 != 0: (self.size[1], self.size[0])
+        self.orientation = (self.orientation + degrees // 90) % 4
+
+    def getRotatedSide(self, side:str):
+        return [{"left":"left","right":"right","top":"top","bottom":"bottom"},
+                {"left":"bottom","right":"top","top":"left","bottom":"right"},
+                {"left":"right","right":"left","top":"bottom","bottom":"top"},
+                {"left":"top","right":"bottom","top":"right","bottom":"left"}
+                ][self.orientation][side]
+
+class PuzzleSection(object): # TODO implement rotation
     def __init__(self, pieces):
         """A group of PuzzlePieces that have been connected together."""
-        self.pieces = list(pieces)
+        self.pieces:list[PuzzlePiece] = list(pieces) # TODO no type error
         self.grabbed = False
         self.grab_offset = (0, 0)
         self.grabbed_piece = None
-        
+        self.orientation = pieces[0].orientation
+
     def grab(self, mouse_pos):
         for piece in self.pieces:
             if piece.rect.collidepoint(mouse_pos):
@@ -66,17 +84,17 @@ class PuzzleSection(object):
                 self.grabbed = True
                 return True
         return False
-                
+
     def set_pos(self, pos):
         for piece in self.pieces:
             x, y = piece.grab_offset
             piece.rect.center = pos[0] + x, pos[1] + y
-                    
+
     def release(self):
         self.grabbed = False
         for piece in self.pieces:
             piece.grab_offset = (0, 0)
-                    
+
     def can_add(self, piece):
         return any((piece.is_joinable(s_piece) for s_piece in self.pieces))
           
@@ -86,23 +104,24 @@ class PuzzleSection(object):
                 return True
         return False        
         
-    def add_piece(self, piece, loose_pieces):
+    def add_piece(self, piece:PuzzlePiece, loose_pieces):
         for s_piece in self.pieces:
             for side in piece.neighbors:
+                rotatedSide = piece.getRotatedSide(side)
                 if s_piece is piece.neighbors[side]:
                     p1 = pg.Rect((0, 0), piece.size)
                     p2 = p1.copy()
                     p1.center = s_piece.rect.center
-                    if side == "left":
+                    if rotatedSide == "left":
                         p2.left = p1.right
                         p2.top = p1.top
-                    elif side == "right":
+                    elif rotatedSide == "right":
                         p2.right = p1.left
                         p2.top = p1.top
-                    elif side == "top":
+                    elif rotatedSide == "top":
                         p2.top = p1.bottom
                         p2.left = p1.left
-                    elif side == "bottom":
+                    elif rotatedSide == "bottom":
                         p2.bottom = p1.top
                         p2.left = p1.left
                     piece.rect.center = p2.center
@@ -117,21 +136,22 @@ class PuzzleSection(object):
         for other_piece in other_pieces:
             for piece in self.pieces:
                 for side in piece.neighbors:
+                    rotatedSide = piece.getRotatedSide(side)
                     if other_piece is piece.neighbors[side]:
                         p1 = pg.Rect((0, 0), piece.size)
                         p2 = p1.copy()
                         p1.center = piece.rect.center
                         p2.center = other_piece.rect.center
-                        if side == "left":
+                        if rotatedSide == "left":
                             x_diff = p1.left - p2.right
                             y_diff = p1.top - p2.top
-                        elif side == "right":
+                        elif rotatedSide == "right":
                             x_diff = p1.right - p2.left
                             y_diff = p1.top - p2.top
-                        elif side == "top":
+                        elif rotatedSide == "top":
                             y_diff = p1.top - p2.bottom
                             x_diff = p1.left - p2.left
-                        elif side == "bottom":
+                        elif rotatedSide == "bottom":
                             y_diff = p1.bottom - p2.top
                             x_diff = p1.left - p2.left
                         for piece_ in other_section.pieces:
@@ -139,13 +159,22 @@ class PuzzleSection(object):
                             self.pieces.append(piece_)
                         self.grabbed = False
                         return
-                        
+
     def get_event(self, event):       
         if event.type == pg.MOUSEBUTTONUP:
             if self.grabbed:
                 self.release()
-            
+
     def draw(self, surface):
         for piece in self.pieces:
             piece.draw(surface)
 
+    def rotate(self, degrees):
+        assert degrees % 90 == 0
+        ndts = (degrees // 90) % 4
+        for piece in self.pieces:
+            piece.rotate(degrees)
+            piece.grab_offset = [(piece.grab_offset[0], piece.grab_offset[1]),
+                                 (piece.grab_offset[1], -piece.grab_offset[0]),
+                                 (-piece.grab_offset[0], -piece.grab_offset[1]),
+                                 (-piece.grab_offset[1], piece.grab_offset[0])][ndts]

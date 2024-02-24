@@ -1,5 +1,6 @@
 import pygame as pg
-import prepare
+from puzzle import Puzzle
+from puzzle_piece import PuzzleSection
 from state_engine import GameState
 
 
@@ -9,10 +10,10 @@ class DraggingSection(GameState):
 
     def startup(self, persistent):
         self.persist = persistent
-        self.puzzle = self.persist["puzzle"]
+        self.puzzle:Puzzle = self.persist["puzzle"]
         self.sections = self.puzzle.sections
         self.pieces = self.puzzle.pieces.values()
-        self.grabbed = self.persist["grabbed_piece"]
+        self.grabbed:PuzzleSection = self.persist["grabbed_piece"]
    
     def leave_state(self, next_state):
         self.done = True
@@ -21,7 +22,7 @@ class DraggingSection(GameState):
     def get_event(self, event):
         if event.type == pg.QUIT:
             self.quit = True
-        elif event.type == pg.MOUSEBUTTONUP:
+        elif event.type == pg.MOUSEBUTTONUP and event.button == 1:
             for section in [x for x in self.sections if x is not self.grabbed]:
                 if self.grabbed.can_add_section(section):
                     self.grabbed.add_section(section)
@@ -36,6 +37,8 @@ class DraggingSection(GameState):
                     self.leave_state("IDLE")
                     return
             self.leave_state("IDLE")
+        elif event.type == pg.MOUSEBUTTONUP and event.button == 3:
+            self.grabbed.rotate(90)
         
     def update(self, dt):
         mouse_pos = pg.mouse.get_pos()

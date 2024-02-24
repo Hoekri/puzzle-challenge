@@ -10,19 +10,13 @@ class Puzzle(object):
         self.piece_total = len(self.pieces)
         self.spread_pieces()
         self.sections = []
-        
-    def get_event(self, event):
-        self.state.get_event(event)
 
-    def update(self, dt):
-        pass
-        
     def draw(self, surface):
         for section in reversed(self.sections):
             section.draw(surface)
         for piece in reversed(self.pieces.values()):
             piece.draw(surface)
-        
+
     def make_pieces(self, puzzle_image):
         self.pieces = {}
         img = puzzle_image
@@ -52,29 +46,33 @@ class Puzzle(object):
         w = screen_w // 8
         h = screen_h // 8
         rects = [pg.Rect(x, y, w, h)
-                for y in range(0, h*8-1, h)
-                for x in range(0, w*8-1, w)]
+                for x in range(0, w*8-1, w)
+                for y in range(0, h*8-1, h)]
         pieces = list(self.pieces.values())
+        for piece in pieces:
+            turns = randint(0,3)
+            piece.rotate(90 * turns)
         shuffle(pieces)
         for p, rect in zip(pieces, rects):
             p.rect.center = rect.center
             
-    def join_pieces(self, piece1, piece2):
+    def join_pieces(self, piece1:PuzzlePiece, piece2:PuzzlePiece):
         p1 = pg.Rect((0, 0), piece1.size)
         p2 = p1.copy()
         p1.center = piece1.rect.center
         for side in piece2.neighbors:
+            rotatedSide = piece2.getRotatedSide(side)
             if piece1 is piece2.neighbors[side]:
-                if side == "left":
+                if rotatedSide == "left":
                     p2.left = p1.right
                     p2.top = p1.top
-                elif side == "right":
+                elif rotatedSide == "right":
                     p2.right = p1.left
                     p2.top = p1.top
-                elif side == "top":
+                elif rotatedSide == "top":
                     p2.top = p1.bottom
                     p2.left = p1.left
-                elif side == "bottom":
+                elif rotatedSide == "bottom":
                     p2.bottom = p1.top
                     p2.left = p1.left
         piece2.rect.center = p2.center
