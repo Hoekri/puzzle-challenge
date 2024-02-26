@@ -19,6 +19,9 @@ class Puzzle(object):
     
     def set_image(self, puzzle_image:pg.Surface):
         img:pg.Surface = puzzle_image
+        img = img.convert(24)
+        scalar = 850 / max(img.get_size())
+        img = pg.transform.smoothscale_by(img, scalar)
         img.set_alpha(None)
         pg.transform.threshold(img, img, (0,0,0), set_color=pg.Color(1,1,1), inverse_set=True)
         for piece in self.pieces.values():
@@ -32,8 +35,9 @@ class Puzzle(object):
     def make_pieces(self, puzzle_image:pg.Surface):
         self.pieces:dict[tuple[int, int], PuzzlePiece] = {}
         img_rect:pg.Rect = puzzle_image.get_rect()
-        pieceW = img_rect.w // 32 * 4
-        pieceH = img_rect.h // 32 * 4
+        scalar = 850 / max(img_rect.size)
+        pieceW = int(img_rect.w / 8 * scalar - 1)
+        pieceH = int(img_rect.h / 8 * scalar - 1)
         for column in range(0, 8):
             for row in range(0, 8):
                 self.pieces[(column, row)] = PuzzlePiece((column, row), (pieceW, pieceH))
@@ -44,9 +48,8 @@ class Puzzle(object):
     def make_piece_img(self, image:pg.Surface, piece:PuzzlePiece):
         img_rect = image.get_rect()
         column, row = piece.index
-        pieceW, pieceH = piece.collision_rect.size
-        x = column * pieceW
-        y = row * pieceH
+        x = column * img_rect.w // 8
+        y = row * img_rect.h // 8
         rect = pg.Rect(x - img_rect.h // 32, y - img_rect.h // 32,
                         3 * img_rect.w // 16, 3 * img_rect.h // 16)
         clipped = rect.clip(img_rect)
@@ -61,21 +64,21 @@ class Puzzle(object):
 
     def spread_pieces(self):
         screen_w, screen_h  = prepare.SCREEN_SIZE
-        w = screen_w // 8
-        h = screen_h // 8
-        rects = [pg.Rect(x, y, w, h)
-                for x in range(0, w*8-1, w)
-                for y in range(0, h*8-1, h)]
+        w = screen_w // 9
+        h = screen_h // 9
+        positions = [(x * w, y * h)
+                for x in range(1, 9)
+                for y in range(1, 9)]
         pieces = list(self.pieces.values())
         for piece in pieces:
-            turns = randint(0,3)
+            turns = randint(0,4)
             piece.rotate(90 * turns)
         shuffle(pieces)
-        for p, rect in zip(pieces, rects):
-            p.rect.center = rect.center
+        for p, pos in zip(pieces, positions):
+            p.set_pos(pos)
             
     def join_pieces(self, piece1:PuzzlePiece, piece2:PuzzlePiece):
-        p1 = pg.Rect((0, 0), piece1.collision_rect.size)
+        p1 = pg.Rect((0, 0), piece1.size)
         p2 = p1.copy()
         p1.center = piece1.rect.center
         for side in piece2.neighbors:

@@ -50,8 +50,6 @@ class Menu(GameState):
     def choose_map(self, continent:str):
         name = continent.replace(" ", "-")
         img:pg.Surface = prepare.GFX[name]
-        scalar = 850 / max(img.get_size()) 
-        img = pg.transform.smoothscale_by(img, scalar)
         self.persist["mode"] = "continent"
         self.persist["puzzle"] = Puzzle(img)
         self.next_state = "IDLE"
@@ -69,15 +67,12 @@ class Menu(GameState):
     
     def choose_file(self, filePath:str):
         img = pg.image.load(filePath)
-        scalar = 850 / max(img.get_size())
-        img = img.convert(24)
-        img = pg.transform.smoothscale_by(img, scalar)
         self.persist["mode"] = "file"
         self.persist["puzzle"] = Puzzle(img)
         self.next_state = "IDLE"
         self.done = True
 
-    def choose_gif_file(self, filePath:str):
+    def choose_animated_file(self, filePath:str):
         with Image.open(filePath) as img:
             if img.n_frames==None or img.n_frames == 1:
                 self.choose_file(filePath)
@@ -102,7 +97,7 @@ class Menu(GameState):
                 self.choose_camera()
         elif event.type == pygame_gui.UI_FILE_DIALOG_PATH_PICKED:
             if event.text[-3:] == "gif" or event.text[-4:] == "webp":
-                self.choose_gif_file(event.text)
+                self.choose_animated_file(event.text)
             else:
                 self.choose_file(event.text)
 

@@ -8,15 +8,15 @@ class PuzzlePiece(object):
     def __init__(self, index, size):
         self.index = index
         self.image:pg.Surface
-        self.collision_rect = pg.Rect((0, 0), size)
+        self.size = size
         self.rect = pg.Rect((index[0]*size[0], index[1]*size[1]), (0, 0))
         self.grabbed = False
         self.grab_offset:tuple
         self.orientation = 0
-    
-    def set_pos(self, pos):
+
+    def set_pos(self, pos:tuple[int, int]):
         self.rect.center = pos
-        
+
     def get_neighbors(self, piece_dict):
         self.neighbors = {}
         offsets = ((-1, 0), (1, 0), (0, -1), (0, 1))
@@ -30,13 +30,13 @@ class PuzzlePiece(object):
                 neighbor = None
             self.neighbors[sides[offset]] = neighbor
    
-    def is_joinable(self, other):
+    def is_joinable(self, other:Self):
         if self.orientation != other.orientation:
             return False
         for side in self.neighbors:
             rotatedSide = self.getRotatedSide(side)
             if other is self.neighbors[side]:
-                r1 = pg.Rect((0,0), self.collision_rect.size)
+                r1 = pg.Rect((0,0), self.size)
                 r2 = r1.copy()
                 r1.center = self.rect.center
                 r2.center = other.rect.center
@@ -48,17 +48,16 @@ class PuzzlePiece(object):
                 if all((close_enough(*pair) for pair in pos_pairs[rotatedSide])):
                     return True
         return False
-        
-    def draw(self, surface):
+
+    def draw(self, surface:pg.Surface):
         surface.blit(self.image, self.rect)
 
-    def rotate(self, degrees):
+    def rotate(self, degrees:int):
         assert degrees % 90 == 0
         ndts = degrees // 90
         self.image = pg.transform.rotate(self.image, degrees)
         self.rect = self.image.get_rect()
-        w, h = self.collision_rect.size # TODO maps are broken and fixed with below
-        # if ndts % 2 == 1: self.collision_rect = pg.Rect((0,0), (h, w)) # but this breaks camera
+        if ndts % 2 == 1: self.size = (self.size[1], self.size[0])
         self.orientation = (self.orientation + degrees // 90) % 4
 
     def getRotatedSide(self, side:str):
@@ -68,7 +67,7 @@ class PuzzlePiece(object):
                 {"left":"top","right":"bottom","top":"right","bottom":"left"}
                 ][self.orientation][side]
     
-    def set_image(self, image):
+    def set_image(self, image:pg.Surface):
         self.image = pg.transform.rotate(image, self.orientation * 90)
         self.rect = self.image.get_rect(center=self.rect.center)
 
@@ -115,7 +114,7 @@ class PuzzleSection(object):
             for side in piece.neighbors:
                 rotatedSide = piece.getRotatedSide(side)
                 if s_piece is piece.neighbors[side]:
-                    p1 = pg.Rect((0, 0), piece.collision_rect.size)
+                    p1 = pg.Rect((0, 0), piece.size)
                     p2 = p1.copy()
                     p1.center = s_piece.rect.center
                     if rotatedSide == "left":
@@ -144,7 +143,7 @@ class PuzzleSection(object):
                 for side in piece.neighbors:
                     rotatedSide = piece.getRotatedSide(side)
                     if other_piece is piece.neighbors[side]:
-                        p1 = pg.Rect((0, 0), piece.collision_rect.size)
+                        p1 = pg.Rect((0, 0), piece.size)
                         p2 = p1.copy()
                         p1.center = piece.rect.center
                         p2.center = other_piece.rect.center

@@ -8,17 +8,14 @@ class Animated:
     def __init__(self, image) -> None:
         self.frames = []
         self.durations = []
-        scalar = 850 / max(image.size)
         for frame in ImageSequence.Iterator(image):
             frame.save(f"./resources/temp/frame.png")
             pgFrame = pg.image.load(f"./resources/temp/frame.png")
-            pgFrame = pgFrame.convert(24)
-            pgFrame = pg.transform.smoothscale_by(pgFrame, scalar)
             self.frames.append(pgFrame)
             self.durations.append(frame.info["duration"])
         self.index = 0
         self.duration = 0
-    
+
     def first_frame(self): return self.frames[0]
 
     def update(self, puzzle:Puzzle, dt:int):
