@@ -6,41 +6,59 @@ from puzzle_piece import PuzzlePiece, PuzzleSection
 
 class Puzzle(object):
     def __init__(self, puzzle_image):
+        self.sections:list[PuzzleSection] = []
         self.make_pieces(puzzle_image)
         self.piece_total = len(self.pieces)
         self.spread_pieces()
-        self.sections = []
 
     def draw(self, surface):
         for section in reversed(self.sections):
             section.draw(surface)
         for piece in reversed(self.pieces.values()):
             piece.draw(surface)
+    
+    def set_image(self, puzzle_image:pg.Surface):
+        img:pg.Surface = puzzle_image
+        img.set_alpha(None)
+        pg.transform.threshold(img, img, (0,0,0), set_color=pg.Color(1,1,1), inverse_set=True)
+        for piece in self.pieces.values():
+            surf = self.make_piece_img(img, piece)
+            piece.set_image(surf)
+        for section in self.sections:
+            for piece in section.pieces:
+                surf = self.make_piece_img(img, piece)
+                piece.set_image(surf)
 
-    def make_pieces(self, puzzle_image):
-        self.pieces = {}
-        img = puzzle_image
-        img_rect:pg.Rect = img.get_rect()
+    def make_pieces(self, puzzle_image:pg.Surface):
+        self.pieces:dict[tuple[int, int], PuzzlePiece] = {}
+        img_rect:pg.Rect = puzzle_image.get_rect()
         pieceW = img_rect.w // 32 * 4
         pieceH = img_rect.h // 32 * 4
         for column in range(0, 8):
-            x = column * pieceW
             for row in range(0, 8):
-                y = row * pieceH
-                rect = pg.Rect(x - img_rect.h // 32, y - img_rect.h // 32,
-                               3 * img_rect.w // 16, 3 * img_rect.h // 16)
-                clipped = rect.clip(img_rect)
-                offset = clipped.x - rect.x, clipped.y - rect.y
-                surf = pg.Surface((3 * img_rect.w // 16, 3 * img_rect.h // 16))
-                surf.blit(img.subsurface(clipped), offset)
-                cover:pg.Surface = prepare.GFX[f"piece{column}-{row}"]
-                cover = pg.transform.scale(cover, [3 * img_rect.w // 16, 3 * img_rect.h // 16])
-                surf.blit(cover, (0, 0))
-                surf.set_colorkey(pg.Color("black"))
-                self.pieces[(column, row)] = PuzzlePiece((column, row), surf, (x, y), (pieceW, pieceH))
+                self.pieces[(column, row)] = PuzzlePiece((column, row), (pieceW, pieceH))
+        self.set_image(puzzle_image)
         for piece in self.pieces.values():
             piece.get_neighbors(self.pieces)
-        
+
+    def make_piece_img(self, image:pg.Surface, piece:PuzzlePiece):
+        img_rect = image.get_rect()
+        column, row = piece.index
+        pieceW, pieceH = piece.collision_rect.size
+        x = column * pieceW
+        y = row * pieceH
+        rect = pg.Rect(x - img_rect.h // 32, y - img_rect.h // 32,
+                        3 * img_rect.w // 16, 3 * img_rect.h // 16)
+        clipped = rect.clip(img_rect)
+        offset = clipped.x - rect.x, clipped.y - rect.y
+        surf = pg.Surface((3 * img_rect.w // 16, 3 * img_rect.h // 16))
+        surf.blit(image.subsurface(clipped), offset)
+        cover:pg.Surface = prepare.GFX[f"piece{column}-{row}"]
+        cover = pg.transform.scale(cover, [3 * img_rect.w // 16, 3 * img_rect.h // 16])
+        surf.blit(cover, (0, 0))
+        surf.set_colorkey(pg.Color("black"))
+        return surf
+
     def spread_pieces(self):
         screen_w, screen_h  = prepare.SCREEN_SIZE
         w = screen_w // 8
@@ -57,7 +75,7 @@ class Puzzle(object):
             p.rect.center = rect.center
             
     def join_pieces(self, piece1:PuzzlePiece, piece2:PuzzlePiece):
-        p1 = pg.Rect((0, 0), piece1.size)
+        p1 = pg.Rect((0, 0), piece1.collision_rect.size)
         p2 = p1.copy()
         p1.center = piece1.rect.center
         for side in piece2.neighbors:

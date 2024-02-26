@@ -1,8 +1,47 @@
-import sys
-from itertools import cycle
 import pygame as pg
 import prepare
-
+            
+class GameState(object):
+    """
+    Parent class for individual game states to inherit from. 
+    """
+    def __init__(self):
+        self.done = False
+        self.quit = False
+        self.next_state:str
+        self.screen_rect = pg.display.get_surface().get_rect()
+        self.persist = {}
+        self.font = pg.font.Font(None, 24)
+        
+    def startup(self, persistent:dict):
+        """
+        Called when a state resumes being active.
+        Allows information to be passed between states.
+        
+        persistent: a dict passed from state to state
+        """
+        self.persist = persistent        
+        
+    def get_event(self, event:pg.Event):
+        """
+        Handle a single event passed by the Game object.
+        """
+        pass
+    
+    def update(self, dt:int):
+        """
+        Update the state. Called by the Game object once
+        per frame. 
+        
+        dt: time since last frame
+        """
+        pass
+        
+    def draw(self, surface:pg.Surface):
+        """
+        Draw everything to the screen.
+        """
+        pass
     
 class Game(object):
     """
@@ -13,7 +52,7 @@ class Game(object):
     queue, framerate, updating the display, etc.). 
     and its run method serves as the "game loop".
     """
-    def __init__(self, screen, states, start_state):
+    def __init__(self, screen:pg.Surface, states:dict[str, GameState], start_state:str):
         """
         Initialize the Game object.
         
@@ -25,7 +64,7 @@ class Game(object):
         self.screen = screen
         self.clock = pg.time.Clock()
         self.fps = 60
-        self.states = states
+        self.states:dict[str, GameState] = states
         self.state_name = start_state
         self.state = self.states[self.state_name]
         self.fullscreen = False
@@ -40,11 +79,10 @@ class Game(object):
     def event_loop(self):
         """Events are passed for handling to the current state."""
         for event in pg.event.get():
-            if event.type == pg.KEYUP:
-                if event.key == pg.K_ESCAPE:
-                    self.done = True
-                elif event.key == pg.K_f:
-                    self.toggle_fullscreen()
+            if event.type == pg.QUIT:
+                self.done = True
+            elif event.type == pg.KEYDOWN and event.key == pg.K_f:
+                self.toggle_fullscreen()
             self.state.get_event(event)
             
     def flip_state(self):
@@ -56,7 +94,7 @@ class Game(object):
         self.state = self.states[self.state_name]
         self.state.startup(persistent)
         
-    def update(self, dt):
+    def update(self, dt:int):
         """
         Check for state flip and update active state.
         
@@ -83,48 +121,3 @@ class Game(object):
             self.update(dt)
             self.draw()
             pg.display.update()
-            
-            
-class GameState(object):
-    """
-    Parent class for individual game states to inherit from. 
-    """
-    def __init__(self):
-        self.done = False
-        self.quit = False
-        self.next_state = None
-        self.screen_rect = pg.display.get_surface().get_rect()
-        self.persist = {}
-        self.font = pg.font.Font(None, 24)
-        
-    def startup(self, persistent):
-        """
-        Called when a state resumes being active.
-        Allows information to be passed between states.
-        
-        persistent: a dict passed from state to state
-        """
-        self.persist = persistent        
-        
-    def get_event(self, event):
-        """
-        Handle a single event passed by the Game object.
-        """
-        pass
-        
-    
-    def update(self, dt):
-        """
-        Update the state. Called by the Game object once
-        per frame. 
-        
-        dt: time since last frame
-        """
-        pass
-        
-    def draw(self, surface):
-        """
-        Draw everything to the screen.
-        """
-        pass
-        

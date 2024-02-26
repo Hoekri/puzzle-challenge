@@ -2,6 +2,8 @@ import pygame as pg
 from state_engine import GameState
 from puzzle import Puzzle
 from labels import Blinker, Button
+from pygame import camera
+from tools import Animated
 
 class Idle(GameState):
     def __init__(self):
@@ -10,6 +12,9 @@ class Idle(GameState):
     def startup(self, persistent):
         self.persist = persistent
         self.puzzle:Puzzle = self.persist["puzzle"]
+        self.mode = self.persist["mode"]
+        if self.mode == "camera": self.camera:camera.Camera = self.persist["camera"]
+        if self.mode == "gif": self.gif:Animated = self.persist["gif"]
         self.sections = self.puzzle.sections
         self.pieces = self.puzzle.pieces.values()
         self.puzzle_finished = False
@@ -22,9 +27,10 @@ class Idle(GameState):
 
     def get_event(self, event):
         self.menuButton.get_event(event)
-        if event.type == pg.QUIT:
-            self.quit = True
-        elif event.type == pg.MOUSEBUTTONUP and event.button == 1:
+        if event.type == pg.KEYDOWN and event.key == pg.K_ESCAPE:
+            self.next_state = "MENU"
+            self.done = True
+        elif event.type == pg.MOUSEBUTTONDOWN and event.button == 1:
             for section in self.puzzle.sections:
                 if section.grab(event.pos):
                     self.persist["grabbed_piece"] = section
@@ -40,16 +46,21 @@ class Idle(GameState):
                     return
     
     def update(self, dt):
+        if self.mode == "camera":
+            if self.camera.query_image():
+                self.puzzle.set_image(self.camera.get_image())
+        elif self.mode == "gif":
+            self.gif.update(self.puzzle, dt)
         self.congratulations.update(dt)
         mouse_pos = pg.mouse.get_pos()
         self.menuButton.update(mouse_pos)
         
     def draw(self, surface:pg.Surface):
-        surface.fill(pg.Color("black"))
+        surface.fill(pg.Color("grey10"))
         self.puzzle.draw(surface)
         if self.puzzle_finished:
             self.congratulations.draw(surface)
-            self.menuButton.draw(surface) # hover text
+            self.menuButton.draw(surface)
 
     def to_menu(self, none=None):
         self.next_state = "MENU"

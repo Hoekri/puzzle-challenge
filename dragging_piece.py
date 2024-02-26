@@ -3,7 +3,7 @@ import prepare
 from puzzle import Puzzle
 from puzzle_piece import PuzzlePiece
 from state_engine import GameState
-
+from pygame import camera
 
 class DraggingPiece(GameState):
     def __init__(self):
@@ -15,7 +15,7 @@ class DraggingPiece(GameState):
         self.sections = self.puzzle.sections
         self.pieces = self.puzzle.pieces.values()
         self.grabbed:PuzzlePiece = self.persist["grabbed_piece"]
-        
+
     def check_pieces(self):
         """
         Checks whether self.grabbed (the piece controlled by the
@@ -42,23 +42,30 @@ class DraggingPiece(GameState):
                 return True
         return False
                     
-    def get_event(self, event):
-        if event.type == pg.QUIT:
-            self.quit = True
-        elif event.type == pg.MOUSEBUTTONUP and event.button == 1:
+    def get_event(self, event:pg.Event):
+        if event.type == pg.KEYDOWN and event.key == pg.K_ESCAPE:
+            self.next_state = "MENU"
+            self.done = True
+        elif event.type == pg.MOUSEBUTTONDOWN and event.button == 1:
             if not self.check_pieces():
                 self.check_sections()
             self.grabbed.grabbed = False
             self.done = True
             self.next_state = "IDLE"
-        elif event.type == pg.MOUSEBUTTONUP and event.button == 3:
+        elif event.type == pg.MOUSEBUTTONDOWN and event.button == 3:
             self.grabbed.rotate(90)
         
-    def update(self, dt):
+    def update(self, dt:int):
+        if self.persist["mode"] == "camera":
+            cam:camera.Camera = self.persist["camera"]
+            if cam.query_image():
+                self.puzzle.set_image(cam.get_image())
+        elif self.persist["mode"] == "gif":
+            self.persist["gif"].update(self.puzzle, dt)
         mouse_pos = pg.mouse.get_pos()
         self.grabbed.set_pos(mouse_pos)
         
-    def draw(self, surface):
-        surface.fill(pg.Color("black"))
+    def draw(self, surface:pg.Surface):
+        surface.fill(pg.Color("grey10"))
         self.puzzle.draw(surface)
         self.grabbed.draw(surface)

@@ -20,9 +20,10 @@ class DraggingSection(GameState):
         self.next_state = next_state
         
     def get_event(self, event):
-        if event.type == pg.QUIT:
-            self.quit = True
-        elif event.type == pg.MOUSEBUTTONUP and event.button == 1:
+        if event.type == pg.KEYDOWN and event.key == pg.K_ESCAPE:
+            self.next_state = "MENU"
+            self.done = True
+        elif event.type == pg.MOUSEBUTTONDOWN and event.button == 1:
             for section in [x for x in self.sections if x is not self.grabbed]:
                 if self.grabbed.can_add_section(section):
                     self.grabbed.add_section(section)
@@ -37,13 +38,19 @@ class DraggingSection(GameState):
                     self.leave_state("IDLE")
                     return
             self.leave_state("IDLE")
-        elif event.type == pg.MOUSEBUTTONUP and event.button == 3:
+        elif event.type == pg.MOUSEBUTTONDOWN and event.button == 3:
             self.grabbed.rotate(90)
         
     def update(self, dt):
+        if self.persist["mode"] == "camera":
+            cam = self.persist["camera"]
+            if cam.query_image():
+                self.puzzle.set_image(cam.get_image())
+        elif self.persist["mode"] == "gif":
+            self.persist["gif"].update(self.puzzle, dt)
         mouse_pos = pg.mouse.get_pos()
         self.grabbed.set_pos(mouse_pos)
 
     def draw(self, surface):
-        surface.fill(pg.Color("black"))
+        surface.fill(pg.Color("grey10"))
         self.puzzle.draw(surface)

@@ -1,16 +1,17 @@
 import pygame as pg
+from typing import Self
 
 def close_enough(value, target, tolerance=7):
     return target - tolerance <= value <= target + tolerance
 
 class PuzzlePiece(object):
-    def __init__(self, index, image, topleft, size):
+    def __init__(self, index, size):
         self.index = index
-        self.image = image
-        self.rect = self.image.get_rect(topleft=topleft)
-        self.size = size
-        self.collision_rect = pg.Rect(0, 0, size[0], size[1])
+        self.image:pg.Surface
+        self.collision_rect = pg.Rect((0, 0), size)
+        self.rect = pg.Rect((index[0]*size[0], index[1]*size[1]), (0, 0))
         self.grabbed = False
+        self.grab_offset:tuple
         self.orientation = 0
     
     def set_pos(self, pos):
@@ -35,7 +36,7 @@ class PuzzlePiece(object):
         for side in self.neighbors:
             rotatedSide = self.getRotatedSide(side)
             if other is self.neighbors[side]:
-                r1 = pg.Rect((0,0), self.size)
+                r1 = pg.Rect((0,0), self.collision_rect.size)
                 r2 = r1.copy()
                 r1.center = self.rect.center
                 r2.center = other.rect.center
@@ -56,7 +57,8 @@ class PuzzlePiece(object):
         ndts = degrees // 90
         self.image = pg.transform.rotate(self.image, degrees)
         self.rect = self.image.get_rect()
-        if ndts % 2 != 0: (self.size[1], self.size[0])
+        w, h = self.collision_rect.size # TODO maps are broken and fixed with below
+        # if ndts % 2 == 1: self.collision_rect = pg.Rect((0,0), (h, w)) # but this breaks camera
         self.orientation = (self.orientation + degrees // 90) % 4
 
     def getRotatedSide(self, side:str):
@@ -65,17 +67,21 @@ class PuzzlePiece(object):
                 {"left":"right","right":"left","top":"bottom","bottom":"top"},
                 {"left":"top","right":"bottom","top":"right","bottom":"left"}
                 ][self.orientation][side]
+    
+    def set_image(self, image):
+        self.image = pg.transform.rotate(image, self.orientation * 90)
+        self.rect = self.image.get_rect(center=self.rect.center)
 
-class PuzzleSection(object): # TODO implement rotation
-    def __init__(self, pieces):
+class PuzzleSection(object):
+    def __init__(self, pieces:tuple[PuzzlePiece, PuzzlePiece]):
         """A group of PuzzlePieces that have been connected together."""
-        self.pieces:list[PuzzlePiece] = list(pieces) # TODO no type error
+        self.pieces:list[PuzzlePiece] = list(pieces)
         self.grabbed = False
         self.grab_offset = (0, 0)
         self.grabbed_piece = None
         self.orientation = pieces[0].orientation
 
-    def grab(self, mouse_pos):
+    def grab(self, mouse_pos:tuple):
         for piece in self.pieces:
             if piece.rect.collidepoint(mouse_pos):
                 self.grabbed_piece = piece
@@ -85,7 +91,7 @@ class PuzzleSection(object): # TODO implement rotation
                 return True
         return False
 
-    def set_pos(self, pos):
+    def set_pos(self, pos:tuple):
         for piece in self.pieces:
             x, y = piece.grab_offset
             piece.rect.center = pos[0] + x, pos[1] + y
@@ -95,21 +101,21 @@ class PuzzleSection(object): # TODO implement rotation
         for piece in self.pieces:
             piece.grab_offset = (0, 0)
 
-    def can_add(self, piece):
+    def can_add(self, piece:PuzzlePiece):
         return any((piece.is_joinable(s_piece) for s_piece in self.pieces))
           
-    def can_add_section(self, section):
+    def can_add_section(self, section:Self):
         for piece in section.pieces:
             if self.can_add(piece):
                 return True
         return False        
         
-    def add_piece(self, piece:PuzzlePiece, loose_pieces):
+    def add_piece(self, piece:PuzzlePiece, loose_pieces:dict[tuple,PuzzlePiece]):
         for s_piece in self.pieces:
             for side in piece.neighbors:
                 rotatedSide = piece.getRotatedSide(side)
                 if s_piece is piece.neighbors[side]:
-                    p1 = pg.Rect((0, 0), piece.size)
+                    p1 = pg.Rect((0, 0), piece.collision_rect.size)
                     p2 = p1.copy()
                     p1.center = s_piece.rect.center
                     if rotatedSide == "left":
@@ -131,14 +137,14 @@ class PuzzleSection(object): # TODO implement rotation
                     del loose_pieces[index_]
                     return                    
         
-    def add_section(self, other_section):
+    def add_section(self, other_section:Self):
         other_pieces = other_section.pieces
         for other_piece in other_pieces:
             for piece in self.pieces:
                 for side in piece.neighbors:
                     rotatedSide = piece.getRotatedSide(side)
                     if other_piece is piece.neighbors[side]:
-                        p1 = pg.Rect((0, 0), piece.size)
+                        p1 = pg.Rect((0, 0), piece.collision_rect.size)
                         p2 = p1.copy()
                         p1.center = piece.rect.center
                         p2.center = other_piece.rect.center
@@ -160,16 +166,16 @@ class PuzzleSection(object): # TODO implement rotation
                         self.grabbed = False
                         return
 
-    def get_event(self, event):       
-        if event.type == pg.MOUSEBUTTONUP:
+    def get_event(self, event:pg.Event):       
+        if event.type == pg.MOUSEBUTTONDOWN:
             if self.grabbed:
                 self.release()
 
-    def draw(self, surface):
+    def draw(self, surface:pg.Surface):
         for piece in self.pieces:
             piece.draw(surface)
 
-    def rotate(self, degrees):
+    def rotate(self, degrees:int):
         assert degrees % 90 == 0
         ndts = (degrees // 90) % 4
         for piece in self.pieces:
@@ -178,3 +184,4 @@ class PuzzleSection(object): # TODO implement rotation
                                  (piece.grab_offset[1], -piece.grab_offset[0]),
                                  (-piece.grab_offset[0], -piece.grab_offset[1]),
                                  (-piece.grab_offset[1], piece.grab_offset[0])][ndts]
+    

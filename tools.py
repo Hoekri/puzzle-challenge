@@ -1,9 +1,34 @@
 import os
 import copy
-import json
 import pygame as pg
+from PIL import ImageSequence
+from puzzle import Puzzle
 
-        
+class Animated:
+    def __init__(self, image) -> None:
+        self.frames = []
+        self.durations = []
+        scalar = 850 / max(image.size)
+        for frame in ImageSequence.Iterator(image):
+            frame.save(f"./resources/temp/frame.png")
+            pgFrame = pg.image.load(f"./resources/temp/frame.png")
+            pgFrame = pgFrame.convert(24)
+            pgFrame = pg.transform.smoothscale_by(pgFrame, scalar)
+            self.frames.append(pgFrame)
+            self.durations.append(frame.info["duration"])
+        self.index = 0
+        self.duration = 0
+    
+    def first_frame(self): return self.frames[0]
+
+    def update(self, puzzle:Puzzle, dt:int):
+        self.duration += dt
+        if self.duration < self.durations[self.index]:
+            return
+        self.index = (self.index + 1) % len(self.frames)
+        puzzle.set_image(self.frames[self.index])
+        self.duration = 0
+
 class _KwargMixin(object):
     """
     Useful for classes that require a lot of keyword arguments for
