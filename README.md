@@ -6,6 +6,12 @@ As I wanted to learn state management in pygame I added some features to this ga
 Original github repo: https://github.com/reddit-pygame/puzzle-challenge
 and Reddit Challenge post: https://www.reddit.com/r/pygame/comments/3s9m2j/challenge_a_puzzling_world/
 
+## Get it to work
+
+ - `pip install pygame-ce`
+ - `pip install pygame_gui`
+ - `pip install pillow`
+
 ## Changes
 
  - Pieces are now rotated by random increments of 90 degrees when the puzzle is scrambled.
