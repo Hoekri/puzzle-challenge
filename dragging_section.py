@@ -39,15 +39,15 @@ class DraggingSection(GameState):
                     return
             self.leave_state("IDLE")
         elif event.type == pg.MOUSEBUTTONDOWN and event.button == 3:
-            self.grabbed.rotate(90)
+            self.grabbed.rotate()
         
     def update(self, dt):
         if self.persist["mode"] == "camera":
             cam = self.persist["camera"]
             if cam.query_image():
                 self.puzzle.set_image(cam.get_image())
-        elif self.persist["mode"] == "gif":
-            self.persist["gif"].update(self.puzzle, dt)
+        elif self.persist["mode"] == "animation":
+            self.persist["animation"].update(self.puzzle, dt)
         mouse_pos = pg.mouse.get_pos()
         self.grabbed.set_pos(mouse_pos)
 

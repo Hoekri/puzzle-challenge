@@ -53,17 +53,19 @@ class DraggingPiece(GameState):
             self.done = True
             self.next_state = "IDLE"
         elif event.type == pg.MOUSEBUTTONDOWN and event.button == 3:
-            self.grabbed.rotate(90)
+            self.grabbed.rotate()
         
     def update(self, dt:int):
         if self.persist["mode"] == "camera":
             cam:camera.Camera = self.persist["camera"]
             if cam.query_image():
                 self.puzzle.set_image(cam.get_image())
-        elif self.persist["mode"] == "gif":
-            self.persist["gif"].update(self.puzzle, dt)
+        elif self.persist["mode"] == "animation":
+            self.persist["animation"].update(self.puzzle, dt)
         mouse_pos = pg.mouse.get_pos()
-        self.grabbed.set_pos(mouse_pos)
+        x = mouse_pos[0] + self.grabbed.rect.centerx - self.grabbed.collision.centerx
+        y = mouse_pos[1] + self.grabbed.rect.centery - self.grabbed.collision.centery
+        self.grabbed.set_pos((x, y))
         
     def draw(self, surface:pg.Surface):
         surface.fill(pg.Color("grey10"))
